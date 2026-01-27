@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SchedulEase</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f7fb;
+  margin: 0;
+}
+.hidden { display:none; }
+
+header {
+  background: linear-gradient(90deg,#1565c0,#1e88e5);
+  color: white;
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.container { padding: 30px; }
+
+.login-box {
+  max-width: 420px;
+  margin: 70px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
+
+input, select, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background: #1976d2;
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  margin-top: 20px;
+}
+
+.task {
+  background: #eef3f8;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.high { color:red; }
+.medium { color:orange; }
+.completed { color:green; font-weight:bold; }
+.overdue { color:red; font-weight:bold; }
+</style>
+</head>
+
+<body>
+
+<!-- 🔐 LOGIN / REGISTER -->
+<div id="login">
+  <div class="login-box">
+    <h2 style="text-align:center;">SchedulEase</h2>
+
+    <select id="role">
+      <option value="">Select Role</option>
+      <option value="employer">Employer</option>
+      <option value="employee">Employee</option>
+    </select>
+
+    <input id="username" placeholder="Employer ID / Employee ID">
+
+    <div id="employerRegister" class="hidden">
+      <input id="empRegName" placeholder="Employer Name">
+      <button onclick="registerEmployer()">Register Employer</button>
+    </div>
+
+    <button onclick="login()">Login</button>
+  </div>
+</div>
+
+<!-- 👨‍💼 EMPLOYER DASHBOARD -->
+<div id="employer" class="hidden">
+  <header>
+    <b>SchedulEase</b>
+    Employer | <a href="#" onclick="logout()" style="color:white;">Logout</a>
+  </header>
+
+  <div class="container">
+
+    <div class="stats">
+      <div class="card"><h3>Employees</h3><p id="empCount">0</p></div>
+      <div class="card"><h3>Total Tasks</h3><p id="taskCount">0</p></div>
+      <div class="card"><h3>Pending</h3><p id="pendingCount">0</p></div>
+    </div>
+
+    <div class="card">
+      <h3>Add Employee</h3>
+      <input id="empId" placeholder="Employee ID">
+      <input id="empName" placeholder="Employee Name">
+      <button onclick="addEmployee()">Add Employee</button>
+    </div>
+
+    <div class="card">
+      <h3>Bulk Individual Tasks</h3>
+      <div id="assignArea"></div>
+      <button onclick="assignIndividual()">Assign All</button>
+    </div>
+
+    <div class="card">
+      <h3>Collaborative Task</h3>
+      <input id="collabTask" placeholder="Task Name">
+      <input type="date" id="collabDeadline">
+      <select id="collabPriority">
+        <option>High</option>
+        <option>Medium</option>
+      </select>
+      <div id="collabEmployees"></div>
+      <button onclick="assignCollaborative()">Assign Collaborative</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- 👩‍💻 EMPLOYEE DASHBOARD -->
+<div id="employee" class="hidden">
+  <header>
+    <b>SchedulEase</b>
+    Employee | <a href="#" onclick="logout()" style="color:white;">Logout</a>
+  </header>
+
+  <div class="container">
+    <h3>My Tasks</h3>
+    <div id="taskList"></div>
+  </div>
+</div>
+
+<script>
+/* 📦 STORAGE */
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const load=(k)=>JSON.parse(localStorage.getItem(k))||[];
+
+/* 🧠 DATA */
+let employers = load("employers");
+let employees = load("employees");
+let tasks = load("tasks");
+let currentUser = localStorage.getItem("currentUser") || "";
+
+/* ROLE CHANGE */
+role.onchange = () => {
+  employerRegister.classList.toggle("hidden", role.value !== "employer");
+};
+
+/* REGISTER EMPLOYER */
+function registerEmployer(){
+  if(!username.value || !empRegName.value)
+    return alert("Fill all fields");
+
+  if(employers.some(e=>e.id===username.value))
+    return alert("Employer already exists");
+
+  employers.push({id:username.value,name:empRegName.value});
+  save("employers",employers);
+  alert("Employer registered successfully");
+}
+
+/* LOGIN */
+function login(){
+  const r=role.value;
+  currentUser=username.value.trim();
+  if(!r||!currentUser) return alert("Fill all fields");
+
+  if(r==="employer"){
+    if(!employers.some(e=>e.id===currentUser))
+      return alert("Employer not registered");
+    employerDiv.classList.remove("hidden");
+    updateEmployerUI();
+  } else {
+    loadEmployee();
+  }
+
+  save("currentUser",currentUser);
+  loginDiv.classList.add("hidden");
+}
+
+/* ADD EMPLOYEE */
+function addEmployee(){
+  employees.push({id:empId.value,name:empName.value});
+  save("employees",employees);
+  empId.value=empName.value="";
+  updateEmployerUI();
+}
+
+/* UPDATE EMPLOYER */
+function updateEmployerUI(){
+  empCount.textContent=employees.length;
+  assignArea.innerHTML="";
+  collabEmployees.innerHTML="";
+
+  employees.forEach(e=>{
+    assignArea.innerHTML+=`
+      <div class="task">
+        <b>${e.name}</b>
+        <input id="task_${e.id}" placeholder="Task">
+        <input type="date" id="date_${e.id}">
+        <select id="priority_${e.id}">
+          <option>High</option>
+          <option>Medium</option>
+        </select>
+      </div>`;
+
+    collabEmployees.innerHTML+=`
+      <label><input type="checkbox" value="${e.id}"> ${e.name}</label><br>`;
+  });
+
+  updateStats();
+}
+
+/* ASSIGN INDIVIDUAL */
+function assignIndividual(){
+  employees.forEach(e=>{
+    const t=document.getElementById(`task_${e.id}`).value;
+    const d=document.getElementById(`date_${e.id}`).value;
+    const p=document.getElementById(`priority_${e.id}`).value;
+    if(t){
+      tasks.push({type:"Individual",empIds:[e.id],task:t,priority:p,deadline:d,status:"Pending"});
+    }
+  });
+  save("tasks",tasks);
+  updateStats();
+}
+
+/* ASSIGN COLLAB */
+function assignCollaborative(){
+  const ids=[...collabEmployees.querySelectorAll("input:checked")].map(i=>i.value);
+  if(ids.length>1){
+    tasks.push({
+      type:"Collaborative",
+      empIds:ids,
+      task:collabTask.value,
+      priority:collabPriority.value,
+      deadline:collabDeadline.value,
+      status:"Pending"
+    });
+    save("tasks",tasks);
+    updateStats();
+  }
+}
+
+/* EMPLOYEE VIEW */
+function loadEmployee(){
+  employeeDiv.classList.remove("hidden");
+  taskList.innerHTML="";
+  const today=new Date().toISOString().split("T")[0];
+
+  tasks.filter(t=>t.empIds.includes(currentUser)).forEach((t,i)=>{
+    const overdue = t.deadline && t.deadline < today && t.status==="Pending";
+    taskList.innerHTML+=`
+      <div class="task">
+        <b>${t.task}</b><br>
+        Priority: ${t.priority}<br>
+        Deadline: ${t.deadline || "—"}<br>
+        ${overdue?'<span class="overdue">Overdue!</span><br>':''}
+        ${t.status==="Completed"
+          ?'<span class="completed">✔ Completed</span>'
+          :`<button onclick="completeTask(${i})">Mark Completed</button>`}
+      </div>`;
+  });
+}
+
+/* COMPLETE */
+function completeTask(i){
+  const myTasks=tasks.filter(t=>t.empIds.includes(currentUser));
+  myTasks[i].status="Completed";
+  save("tasks",tasks);
+  loadEmployee();
+  updateStats();
+}
+
+/* STATS */
+function updateStats(){
+  taskCount.textContent=tasks.length;
+  pendingCount.textContent=tasks.filter(t=>t.status==="Pending").length;
+}
+
+/* LOGOUT */
+function logout(){
+  localStorage.removeItem("currentUser");
+  location.reload();
+}
+
+/* SHORTCUTS */
+const loginDiv=login;
+const employerDiv=employer;
+const employeeDiv=employee;
+</script>
+
+</body>
+</html>
