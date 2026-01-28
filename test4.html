@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SchedulEase</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:linear-gradient(135deg,#0f001f,#2b0040,#4b0066);
+  color:white;
+}
+.hidden{display:none}
+
+/* NAVBAR */
+.navbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:20px 60px;
+}
+.navbar a{
+  color:white;
+  text-decoration:none;
+  margin-left:25px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* LOGIN */
+.login-wrapper{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:80vh;
+}
+.login-card{
+  background:#4b1a7a;
+  width:420px;
+  padding:40px;
+  border-radius:18px;
+}
+.login-card input,
+.login-card select,
+.login-card button{
+  width:100%;
+  padding:14px;
+  margin-top:15px;
+  border-radius:30px;
+  border:none;
+}
+.login-card input,select{
+  background:#3a0f5f;
+  color:white;
+}
+.login-card button{
+  background:white;
+  color:#4b1a7a;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+/* DASHBOARD */
+header{
+  background:#1e88e5;
+  padding:15px 30px;
+  display:flex;
+  justify-content:space-between;
+}
+.container{padding:30px}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+}
+.card{
+  background:white;
+  color:black;
+  padding:20px;
+  border-radius:12px;
+  margin-top:20px;
+}
+.task{
+  background:#030303;
+  padding:12px;
+  border-radius:8px;
+  margin-top:10px;
+}
+button{
+  background:#1976d2;
+  color:white;
+  border:none;
+  padding:10px;
+  border-radius:6px;
+  cursor:pointer;
+}
+.completed{color:green;font-weight:bold}
+.overdue{color:red;font-weight:bold}
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+  <h1>SchedulEase</h1>
+  <div>
+    <a>HOME</a>
+    <a>CONTACT</a>
+    <a onclick="openLogin()">LOGIN</a>
+  </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="hidden">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <h2>Login</h2>
+
+      <select id="role">
+        <option value="">Select Role</option>
+        <option value="employer">Employer</option>
+        <option value="employee">Employee</option>
+      </select>
+
+      <input id="userId" placeholder="Employer ID / Employee ID">
+
+      <div id="registerBox" class="hidden">
+        <input id="employerName" placeholder="Employer Name">
+        <button onclick="registerEmployer()">Register Employer</button>
+      </div>
+
+      <button onclick="login()">Submit</button>
+    </div>
+  </div>
+</div>
+
+<!-- EMPLOYER DASHBOARD -->
+<div id="employerDash" class="hidden">
+<header>
+  Employer Dashboard
+  <a onclick="logout()" style="color:white;cursor:pointer">Logout</a>
+</header>
+
+<div class="container">
+
+<div class="stats">
+  <div class="card"><h3>Employees</h3><p id="empCount">0</p></div>
+  <div class="card"><h3>Total Tasks</h3><p id="taskCount">0</p></div>
+  <div class="card"><h3>Pending</h3><p id="pendingCount">0</p></div>
+</div>
+
+<div class="card">
+<h3>Add Employee</h3>
+<input id="empId" placeholder="Employee ID">
+<input id="empName" placeholder="Employee Name">
+<button onclick="addEmployee()">Add</button>
+</div>
+
+<div class="card">
+<h3>Bulk Individual Tasks</h3>
+<div id="assignArea"></div>
+<button onclick="assignIndividual()">Assign All</button>
+</div>
+
+<div class="card">
+<h3>Collaborative Task</h3>
+<input id="collabTask" placeholder="Task Name">
+<input type="date" id="collabDeadline">
+<select id="collabPriority">
+<option>High</option><option>Medium</option>
+</select>
+<div id="collabEmployees"></div>
+<button onclick="assignCollaborative()">Assign</button>
+</div>
+
+</div>
+</div>
+
+<!-- EMPLOYEE DASHBOARD -->
+<div id="employeeDash" class="hidden">
+<header>
+  Employee Dashboard
+  <a onclick="logout()" style="color:rgb(255, 254, 254);cursor:pointer">Logout</a>
+</header>
+<div class="container">
+<h3>My Tasks</h3>
+<div id="taskList"></div>
+</div>
+</div>
+
+<script>
+const save=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+const load=k=>JSON.parse(localStorage.getItem(k))||[];
+
+let employers=load("employers");
+let employees=load("employees");
+let tasks=load("tasks");
+let currentUser="";
+let currentRole="";
+
+role.onchange=()=>registerBox.classList.toggle("hidden",role.value!=="employer");
+
+function openLogin(){
+  loginPage.classList.remove("hidden");
+}
+
+function registerEmployer(){
+  const id=userId.value.trim();
+  const name=employerName.value.trim();
+  if(!id||!name)return alert("Fill all");
+  if(employers.some(e=>e.id===id))return alert("Exists");
+  employers.push({id,name});
+  save("employers",employers);
+  alert("Registered");
+}
+
+function login(){
+  currentUser=userId.value.trim();
+  currentRole=role.value;
+  if(!currentUser||!currentRole)return alert("Fill all");
+
+  loginPage.classList.add("hidden");
+
+  if(currentRole==="employer"){
+    if(!employers.some(e=>e.id===currentUser))return alert("Not registered");
+    employerDash.classList.remove("hidden");
+    updateEmployerUI();
+  }else{
+    employeeDash.classList.remove("hidden");
+    loadEmployee();
+  }
+}
+
+function addEmployee(){
+  employees.push({id:empId.value,name:empName.value,employer:currentUser});
+  save("employees",employees);
+  empId.value=empName.value="";
+  updateEmployerUI();
+}
+
+function updateEmployerUI(){
+  const myEmp=employees.filter(e=>e.employer===currentUser);
+  empCount.textContent=myEmp.length;
+  assignArea.innerHTML="";
+  collabEmployees.innerHTML="";
+
+  myEmp.forEach(e=>{
+    assignArea.innerHTML+=`
+    <div class="task">
+    <b>${e.name}</b>
+    <input id="t_${e.id}" placeholder="Task">
+    <input type="date" id="d_${e.id}">
+    <select id="p_${e.id}">
+      <option>High</option><option>Medium</option>
+    </select>
+    </div>`;
+    collabEmployees.innerHTML+=`
+    <label><input type="checkbox" value="${e.id}"> ${e.name}</label><br>`;
+  });
+  updateStats();
+}
+
+function assignIndividual(){
+  employees.filter(e=>e.employer===currentUser).forEach(e=>{
+    const t=document.getElementById(`t_${e.id}`).value;
+    if(t){
+      tasks.push({
+        empIds:[e.id],
+        task:t,
+        deadline:document.getElementById(`d_${e.id}`).value,
+        priority:document.getElementById(`p_${e.id}`).value,
+        status:"Pending",
+        employer:currentUser
+      });
+    }
+  });
+  save("tasks",tasks);
+  updateStats();
+}
+
+function assignCollaborative(){
+  const ids=[...collabEmployees.querySelectorAll("input:checked")].map(i=>i.value);
+  if(ids.length<2)return alert("Select at least 2");
+  tasks.push({
+    empIds:ids,
+    task:collabTask.value,
+    deadline:collabDeadline.value,
+    priority:collabPriority.value,
+    status:"Pending",
+    employer:currentUser
+  });
+  save("tasks",tasks);
+  updateStats();
+}
+
+function loadEmployee(){
+  taskList.innerHTML="";
+  const today=new Date().toISOString().split("T")[0];
+  tasks.filter(t=>t.empIds.includes(currentUser)).forEach((t,i)=>{
+    const overdue=t.deadline&&t.deadline<today&&t.status==="Pending";
+    taskList.innerHTML+=`
+    <div class="task">
+    <b>${t.task}</b><br>
+    Priority:${t.priority}<br>
+    Deadline:${t.deadline||"-"}<br>
+    ${overdue?'<span class="overdue">Overdue</span><br>':''}
+    ${t.status==="Completed"
+      ?'<span class="completed">Completed</span>'
+      :`<button onclick="completeTask(${i})">Mark Completed</button>`}
+    </div>`;
+  });
+}
+
+function completeTask(i){
+  const my=tasks.filter(t=>t.empIds.includes(currentUser));
+  my[i].status="Completed";
+  save("tasks",tasks);
+  loadEmployee();
+  updateStats();
+}
+
+function updateStats(){
+  const my=tasks.filter(t=>t.employer===currentUser);
+  taskCount.textContent=my.length;
+  pendingCount.textContent=my.filter(t=>t.status==="Pending").length;
+}
+
+function logout(){
+  location.reload();
+}
+</script>
+
+</body>
+</html>
