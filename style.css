@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-
 * {
     margin: 0;
     padding: 0;
@@ -70,11 +69,11 @@ section h1{
     position: fixed;
     width: 420px;
     height: 440px;
-    background: rgb(63, 19, 113);
+    background: rgba(0, 0, 0, .3);
     border: 2px solid rgb(142, 61, 219);
     border-radius: 15px;
     box-shadow: black;
-    backdrop-filter: blur(5000px);
+    backdrop-filter: blur(5px);
     color: rgb(255, 255, 255);
     inset: 0;
     margin:auto;
@@ -85,7 +84,6 @@ section h1{
 .authmodel .form-boxlogin{
     width: 100%;
     padding:80px;
-
 }
 .form-boxlogin h2 {
     font-size: 35px;
@@ -93,7 +91,7 @@ section h1{
 }
 .input-box{
     position:relative;
-    width: 100;
+    width: 100%;
     height: 50px;
     margin: 30px 0;
 
@@ -102,6 +100,7 @@ section h1{
     width: 100%;
     height: 100%;
     background: transparent;
+    border: 2px solid lightslategrey;
     outline: none;
     border-radius: 40px ;
     font-size: medium;
@@ -119,15 +118,25 @@ section h1{
     /*to make the logo/the desing in the form to come to the middle*/
     font-size: 20px;
 }
-.login_btn{
+.login{
     width: 100%;
     height: 45px;
     background: #fff;
-    border-radius: 20px;
-    border-radius: none;
+    border-radius: 40px;
     cursor: pointer;
-    transition: .5s;
-    justify-content: center; 
-    align-items: center ;
-
+    border: none;
+    box-shadow: 0 0 10px black;
+    font-size: medium;
+    color: black;
+    font-weight: 600;
+}
+.form-boxlogin p{
+    font-size: medium;
+    text-align: center;
+    margin: 25px 0 10px;
+}
+.form-boxlogin p a:hover{
+    text-decoration: underline;
+    background: white;
+    colour:black
 }
